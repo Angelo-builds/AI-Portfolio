@@ -1,35 +1,52 @@
 import express from 'express';
 import { createServer as createViteServer } from 'vite';
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import pkg from 'pg';
+const { Pool } = pkg;
 import path from 'path';
 import { fileURLToPath } from 'url';
-import fs from 'fs';
-import { initialData } from './src/data/content.js'; // Fallback initial data
+import { initialData } from './src/data/content.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'database.sqlite');
+
+// In-memory fallback if Postgres is not configured yet
+let memoryContent = JSON.stringify(initialData);
+
+let pool: pkg.Pool | null = null;
+
+if (process.env.PGHOST) {
+  pool = new Pool({
+    host: process.env.PGHOST,
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
+    database: process.env.PGDATABASE,
+    port: Number(process.env.PGPORT) || 5432,
+  });
+}
 
 async function initDB() {
-  const db = await open({
-    filename: DB_PATH,
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS content (
-      id INTEGER PRIMARY KEY DEFAULT 1,
-      data TEXT NOT NULL
-    )
-  `);
-
-  // Initialize with default data if empty
-  const row = await db.get('SELECT data FROM content WHERE id = 1');
-  if (!row) {
-    await db.run('INSERT INTO content (id, data) VALUES (1, ?)', [JSON.stringify(initialData)]);
+  if (!pool) {
+    console.log("Postgres credentials not found in env. Falling back to in-memory storage.");
+    return;
   }
+  
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS content (
+        id INTEGER PRIMARY KEY,
+        data TEXT NOT NULL
+      )
+    `);
 
-  return db;
+    const res = await pool.query('SELECT data FROM content WHERE id = 1');
+    if (res.rows.length === 0) {
+      await pool.query('INSERT INTO content (id, data) VALUES (1, $1)', [JSON.stringify(initialData)]);
+    }
+    console.log("Postgres database initialized successfully.");
+  } catch (err) {
+    console.error("Failed to initialize Postgres database:", err);
+    console.log("Falling back to in-memory storage due to DB connection error.");
+    pool = null; // Fallback to memory
+  }
 }
 
 async function startServer() {
@@ -38,13 +55,20 @@ async function startServer() {
   
   app.use(express.json({ limit: '10mb' }));
 
-  const db = await initDB();
+  await initDB();
 
   // API Routes
   app.get('/api/content', async (req, res) => {
     try {
-      const row = await db.get('SELECT data FROM content WHERE id = 1');
-      res.json(JSON.parse(row.data));
+      if (pool) {
+        const result = await pool.query('SELECT data FROM content WHERE id = 1');
+        if (result.rows.length > 0) {
+          res.json(JSON.parse(result.rows[0].data));
+          return;
+        }
+      }
+      // Fallback
+      res.json(JSON.parse(memoryContent));
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Failed to retrieve content' });
@@ -53,9 +77,14 @@ async function startServer() {
 
   app.post('/api/content', async (req, res) => {
     try {
-      // In a real app we would check admin auth token here
       const newContent = req.body;
-      await db.run('UPDATE content SET data = ? WHERE id = 1', [JSON.stringify(newContent)]);
+      const jsonContent = JSON.stringify(newContent);
+      
+      if (pool) {
+        await pool.query('UPDATE content SET data = $1 WHERE id = 1', [jsonContent]);
+      } else {
+        memoryContent = jsonContent;
+      }
       res.json({ success: true });
     } catch (err) {
       console.error(err);
