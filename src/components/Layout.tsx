@@ -3,6 +3,7 @@ import { useStore } from '../store/useStore';
 import { Moon, Sun, Menu, X, LogOut, Globe, Check, Edit2, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
+import AdminStatus from './AdminStatus';
 
 export default function Layout() {
   const { language, setLanguage, theme, setTheme, isAdmin, logout, isEditing, setIsEditing } = useStore();
@@ -167,8 +168,10 @@ export default function Layout() {
 
       {/* Admin Floating Toolbar */}
       {isAdmin && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3">
-          {!isEditing ? (
+        <>
+          <AdminStatus />
+          <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-3">
+            {!isEditing ? (
             <button
               onClick={() => setIsEditing(true)}
               className="flex items-center space-x-2 px-5 py-3 rounded-full shadow-xl text-white font-bold transition-transform hover:scale-105 bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700"
@@ -198,6 +201,7 @@ export default function Layout() {
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

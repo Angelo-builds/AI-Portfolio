@@ -5,6 +5,7 @@ import pkg from 'pg';
 const { Pool } = pkg;
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { initialData } from './src/data/content.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -58,6 +59,23 @@ async function startServer() {
 
   await initDB();
 
+  // Maintenance Mode Middleware
+  app.use((req, res, next) => {
+    const maintenanceFile = path.join(process.cwd(), '.maintenance');
+    if (fs.existsSync(maintenanceFile)) {
+      // Allow API and static static files if strictly needed, but let's block mostly
+      if (req.path.endsWith('.pdf')) return next();
+      if (!req.path.startsWith('/api')) {
+        const maintPage = path.join(process.cwd(), 'public', 'maintenance.html');
+        if (fs.existsSync(maintPage)) {
+          return res.status(503).sendFile(maintPage);
+        }
+        return res.status(503).send('Site under maintenance. Please check back soon.');
+      }
+    }
+    next();
+  });
+
   // API Routes
   app.get('/api/content', async (req, res) => {
     try {
@@ -91,6 +109,38 @@ async function startServer() {
       console.error(err);
       res.status(500).json({ error: 'Failed to update content' });
     }
+  });
+
+  app.get('/api/status', async (req, res) => {
+    let dbStatus = 'Disconnected';
+    if (pool) {
+      try {
+        await pool.query('SELECT 1');
+        dbStatus = 'Connected';
+      } catch (err: any) {
+        dbStatus = 'Error: ' + err.message;
+      }
+    } else {
+      dbStatus = 'Not Configured (Using In-Memory)';
+    }
+
+    let umamiStatus = 'Unknown';
+    try {
+      // Umami check (best effort)
+      const fetchReq = await fetch('https://stats.angihomelab.com/script.js', { method: 'HEAD', timeout: 5000 });
+      if (fetchReq.ok) {
+        umamiStatus = 'Reachable';
+      } else {
+        umamiStatus = 'Unreachable (HTTP ' + fetchReq.status + ')';
+      }
+    } catch (err) {
+      umamiStatus = 'Unreachable';
+    }
+
+    res.json({
+      database: dbStatus,
+      umami: umamiStatus
+    });
   });
 
   // Vite middleware for development
