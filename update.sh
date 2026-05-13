@@ -8,22 +8,19 @@ echo "Maintenance mode active."
 echo "==> Pulling latest changes from git..."
 git pull origin main
 
-echo "==> Installing any new dependencies..."
+echo "==> Installing dependencies..."
 npm install
 
 echo "==> Building frontend and backend..."
 npm run build
 
-# If using PM2 (recommended for LXC node apps), you can restart it here.
-# Assuming the app is named "portfolio" in pm2:
+# To ensure the server runs in production mode, set NODE_ENV=production
+# Assuming you use pm2:
+# pm2 start ecosystem.config.js OR
 # pm2 restart portfolio
-
-# Alternatively, if you run this with systemd, uncomment the next line:
-# sudo systemctl restart portfolio
-
-echo "==> Restarting services. You may need to restart the node server manually if not using PM2/systemd."
-# You could potentially kill and restart it, but PM2 is better.
+echo "==> Restarting services. You may need to restart the node server manually if not using PM2."
+echo "==> Note: Run the app using 'npm start' with NODE_ENV=production or PM2."
 
 echo "==> Removing maintenance mode..."
-rm .maintenance
+rm -f .maintenance
 echo "Site is back online!"
