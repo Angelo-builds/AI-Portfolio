@@ -105,7 +105,7 @@ async function startServer() {
   });
 
   app.post('/api/content', async (req, res) => {
-    if (!isLocalIP(req.ip)) return res.status(403).json({ error: 'Access denied. Local IP required.' });
+    if (!isLocalIP(req.ip)) return res.status(401).json({ error: 'Access denied. Local IP required.' });
     try {
       const newContent = req.body;
       const jsonContent = JSON.stringify(newContent);
@@ -127,7 +127,7 @@ async function startServer() {
   });
 
   app.get('/api/status', async (req, res) => {
-    if (!isLocalIP(req.ip)) return res.status(403).json({ error: 'Access denied. Local IP required.' });
+    if (!isLocalIP(req.ip)) return res.status(401).json({ error: 'Access denied. Local IP required.' });
     let dbStatus = 'Disconnected';
     if (pool) {
       try {

@@ -3,13 +3,17 @@ import { Database, Activity, ServerCrash, CheckCircle2, Settings2, X, Eye, EyeOf
 import { useStore } from '../store/useStore';
 
 export default function AdminStatus() {
-  const { language, content, updateContent, isEditing } = useStore();
+  const { language, content, updateContent, isEditing, logout } = useStore();
   const [status, setStatus] = useState<{ database: string; umami: string; error?: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/status')
       .then(async res => {
+        if (res.status === 401 || res.status === 403) {
+          logout();
+          throw new Error('Unauthorized');
+        }
         const contentType = res.headers.get('content-type');
         if (!res.ok) {
            throw new Error(`HTTP ${res.status}`);
