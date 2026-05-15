@@ -52,9 +52,22 @@ async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
   
+  app.set('trust proxy', true);
   app.use(express.json({ limit: '10mb' }));
 
   await initDB();
+
+  function isLocalIP(ip: string | undefined): boolean {
+    if (!ip) return false;
+    const ipStr = ip.startsWith('::ffff:') ? ip.substring(7) : ip;
+    if (ipStr === '127.0.0.1' || ipStr === '::1') return true;
+    if (ipStr.startsWith('10.')) return true;
+    if (ipStr.startsWith('192.168.')) return true;
+    if (ipStr.startsWith('100.')) return true;
+    if (ipStr.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true;
+    if (ipStr.toLowerCase().startsWith('fd7a:115c:a1e0:')) return true;
+    return false;
+  }
 
   // Maintenance Mode Middleware
   app.use((req, res, next) => {
@@ -92,6 +105,7 @@ async function startServer() {
   });
 
   app.post('/api/content', async (req, res) => {
+    if (!isLocalIP(req.ip)) return res.status(403).json({ error: 'Access denied. Local IP required.' });
     try {
       const newContent = req.body;
       const jsonContent = JSON.stringify(newContent);
@@ -108,7 +122,12 @@ async function startServer() {
     }
   });
 
+  app.get('/api/admin-check', (req, res) => {
+    res.json({ allowed: isLocalIP(req.ip) });
+  });
+
   app.get('/api/status', async (req, res) => {
+    if (!isLocalIP(req.ip)) return res.status(403).json({ error: 'Access denied. Local IP required.' });
     let dbStatus = 'Disconnected';
     if (pool) {
       try {
@@ -123,8 +142,11 @@ async function startServer() {
 
     let umamiStatus = 'Unknown';
     try {
-      // Umami check (best effort)
-      const fetchReq = await fetch('https://stats.angihomelab.com/script.js', { method: 'HEAD', timeout: 5000 });
+            // Umami check (best effort)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const fetchReq = await fetch('https://stats.angihomelab.com/script.js', { method: 'HEAD', signal: controller.signal });
+      clearTimeout(timeoutId);
       if (fetchReq.ok) {
         umamiStatus = 'Reachable';
       } else {

@@ -3,15 +3,23 @@ import { Database, Activity, ServerCrash, CheckCircle2, Settings2, X, Eye, EyeOf
 import { useStore } from '../store/useStore';
 
 export default function AdminStatus() {
-  const { language, content, setContent, isEditing } = useStore();
+  const { language, content, updateContent, isEditing } = useStore();
   const [status, setStatus] = useState<{ database: string; umami: string; error?: string } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     fetch('/api/status')
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+      .then(async res => {
+        const contentType = res.headers.get('content-type');
+        if (!res.ok) {
+           throw new Error(`HTTP ${res.status}`);
+        }
+        if (contentType && contentType.includes('application/json')) {
+          return res.json();
+        } else {
+          const text = await res.text();
+          throw new Error(`Expected JSON but got HTML/text. Status: ${res.status}. Body: ${text.substring(0, 50)}...`);
+        }
       })
       .then(data => setStatus(data))
       .catch(err => setStatus({ database: 'Error', umami: 'Error', error: err.message }));
@@ -23,7 +31,7 @@ export default function AdminStatus() {
   const umamiOk = status.umami === 'Reachable';
 
   const toggleSetting = (key: keyof NonNullable<typeof content.settings>) => {
-    setContent({
+    updateContent({
       ...content,
       settings: {
         ...(content.settings || {}),

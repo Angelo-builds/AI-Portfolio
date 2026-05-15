@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useStore } from './store/useStore';
 import Layout from './components/Layout';
@@ -40,6 +40,14 @@ function PageLoader() {
       </div>
     </div>
   );
+}
+
+function FeatureGuard({ children, settingKey }: { children: React.ReactNode, settingKey: 'showExperience' | 'showEducation' | 'showCertifications' | 'showProjects' | 'showSkills' }) {
+  const { content, isEditing } = useStore();
+  if (!isEditing && content.settings?.[settingKey] === false) {
+    return <Navigate to="/404" replace />;
+  }
+  return <>{children}</>;
 }
 
 function LanguageSync() {
@@ -86,11 +94,11 @@ export default function App() {
           
           <Route path="/:lang" element={<LanguageSync />}>
             <Route index element={<Home />} />
-            <Route path="experience" element={<Experience />} />
-            <Route path="education" element={<Education />} />
-            <Route path="skills" element={<Skills />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="certifications" element={<Certifications />} />
+            <Route path="experience" element={<FeatureGuard settingKey="showExperience"><Experience /></FeatureGuard>} />
+            <Route path="education" element={<FeatureGuard settingKey="showEducation"><Education /></FeatureGuard>} />
+            <Route path="skills" element={<FeatureGuard settingKey="showSkills"><Skills /></FeatureGuard>} />
+            <Route path="projects" element={<FeatureGuard settingKey="showProjects"><Projects /></FeatureGuard>} />
+            <Route path="certifications" element={<FeatureGuard settingKey="showCertifications"><Certifications /></FeatureGuard>} />
           </Route>
 
           <Route path="/404" element={<NotFound />} />

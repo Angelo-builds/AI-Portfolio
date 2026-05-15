@@ -10,18 +10,18 @@ export default function AdminLogin() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Basic strict-LAN detection script
-    const hn = window.location.hostname;
-    const isLocal = hn === 'localhost' || 
-                    hn === '127.0.0.1' || 
-                    hn.startsWith('192.168.') || 
-                    hn.startsWith('10.') || 
-                    /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hn) ||
-                    hn.includes('run.app'); // We allow "run.app" ONLY so you can see it working contextually in the AI Studio preview environment
-                    
-    if (!isLocal) {
-      navigate('/404', { replace: true });
-    }
+    // Check with the server if we are allowed to access the admin area based on our IP
+    fetch('/api/admin-check')
+      .then(res => res.json())
+      .then(data => {
+        if (!data.allowed) {
+          navigate('/404', { replace: true });
+        }
+      })
+      .catch(() => {
+        // Fallback: If the check fails entirely, probably safer to deny
+        navigate('/404', { replace: true });
+      });
   }, [navigate]);
 
   const handleSubmit = (e: FormEvent) => {
