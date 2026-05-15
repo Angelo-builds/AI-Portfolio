@@ -39,6 +39,13 @@ export interface Project {
 }
 
 export interface PortfolioData {
+  settings?: {
+    showExperience?: boolean;
+    showEducation?: boolean;
+    showCertifications?: boolean;
+    showProjects?: boolean;
+    showSkills?: boolean;
+  };
   profile: {
     name: string;
     title: LocalizedString;
@@ -71,6 +78,13 @@ export interface PortfolioData {
 }
 
 export const initialData: PortfolioData = {
+  settings: {
+    showExperience: true,
+    showEducation: true,
+    showCertifications: true,
+    showProjects: true,
+    showSkills: true,
+  },
   profile: {
     name: "Angelo Brambilla",
     title: {
@@ -82,9 +96,9 @@ export const initialData: PortfolioData = {
     linkedin: "https://www.linkedin.com/in/angelo-brambilla",
     github: "https://github.com/Angelo-builds",
     website: "https://angihomelab.com",
-    photoUrl: "https://placehold.co/400x400/2563eb/ffffff?text=AB",
-    cvItUrl: "/assets/cv-it.pdf",
-    cvEnUrl: "/assets/cv-en.pdf"
+    photoUrl: "/images/profile.jpg",
+    cvItUrl: "/cv-it.pdf",
+    cvEnUrl: "/cv-en.pdf"
   },
   summary: {
     en: "IT professional with a solid background in programming, networking, and systems administration. Experienced in virtualization, self-hosting, and open-source solutions, with growing expertise in DevOps practices, Kubernetes, and cloud technologies. Skilled in multiple programming languages and operating systems, and currently enhancing knowledge in Large Language Models (LLMs) and AI applications.",

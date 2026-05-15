@@ -4,11 +4,8 @@ import { createServer as createViteServer } from 'vite';
 import pkg from 'pg';
 const { Pool } = pkg;
 import path from 'path';
-import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { initialData } from './src/data/content.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // In-memory fallback if Postgres is not configured yet
 let memoryContent = JSON.stringify(initialData);
@@ -153,7 +150,9 @@ async function startServer() {
   } else {
     // Production serving
     const distPath = path.join(process.cwd(), 'dist');
+    const publicPath = path.join(process.cwd(), 'public');
     app.use(express.static(distPath));
+    app.use(express.static(publicPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });

@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 import AdminStatus from './AdminStatus';
 
 export default function Layout() {
-  const { language, setLanguage, theme, setTheme, isAdmin, logout, isEditing, setIsEditing } = useStore();
+  const { language, setLanguage, theme, setTheme, isAdmin, logout, isEditing, setIsEditing, content } = useStore();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -21,14 +21,20 @@ export default function Layout() {
     setIsEditing(false);
   };
 
-  const navLinks = [
-    { name: { en: 'Home', it: 'Home' }, path: '' },
-    { name: { en: 'Experience', it: 'Esperienza' }, path: '/experience' },
-    { name: { en: 'Education', it: 'Istruzione' }, path: '/education' },
-    { name: { en: 'Skills', it: 'Competenze' }, path: '/skills' },
-    { name: { en: 'Projects', it: 'Progetti' }, path: '/projects' },
-    { name: { en: 'Certifications', it: 'Certificazioni' }, path: '/certifications' },
+  const allNavLinks = [
+    { name: { en: 'Home', it: 'Home' }, path: '', settingKey: null },
+    { name: { en: 'Experience', it: 'Esperienza' }, path: '/experience', settingKey: 'showExperience' as const },
+    { name: { en: 'Education', it: 'Istruzione' }, path: '/education', settingKey: 'showEducation' as const },
+    { name: { en: 'Skills', it: 'Competenze' }, path: '/skills', settingKey: 'showSkills' as const },
+    { name: { en: 'Projects', it: 'Progetti' }, path: '/projects', settingKey: 'showProjects' as const },
+    { name: { en: 'Certifications', it: 'Certificazioni' }, path: '/certifications', settingKey: 'showCertifications' as const },
   ];
+
+  const navLinks = allNavLinks.filter(link => {
+    if (isEditing) return true; // Show all to admin while editing
+    if (!link.settingKey) return true; // Always show Home
+    return content.settings?.[link.settingKey] !== false; // Hide if explicitly false
+  });
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans transition-colors duration-300">

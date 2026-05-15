@@ -41,6 +41,11 @@ export default function Home() {
             src={profile.photoUrl} 
             alt={profile.name}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.onerror = null; // prevents looping
+              target.src = "https://placehold.co/400x400/2563eb/ffffff?text=AB";
+            }}
           />
           {isEditing && (
             <div className="absolute inset-0 bg-black/50 flex flex-col justify-center items-center text-white p-2 text-center text-xs">
