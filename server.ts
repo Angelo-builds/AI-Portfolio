@@ -61,21 +61,27 @@ async function startServer() {
     const ip = req.ip || '';
     const ipStr = ip.startsWith('::ffff:') ? ip.substring(7) : ip;
     
-    // Explicitly allow 192.168.1.x (LAN)
-    if (ipStr.startsWith('192.168.1.')) return true;
-
-    // Placeholder for Tailscale IP - you will replace this later
-    if (ipStr === '#.#.#.#') return true;
-    
-    // Also allow local loopback
+    // Broad allow for private network ranges to avoid NAT issues (Docker, Tailscale, LAN)
+    if (ipStr.startsWith('192.168.')) return true;
+    if (ipStr.startsWith('10.')) return true;
+    if (ipStr.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true; // Docker
+    if (ipStr.startsWith('100.')) return true; // Tailscale CGNAT
+    if (ipStr.toLowerCase().startsWith('fd7a:115c:a1e0:')) return true; // Tailscale IPv6
+    if (ipStr.toLowerCase().startsWith('fe80:')) return true; // Link-local IPv6
     if (ipStr === '127.0.0.1' || ipStr === '::1') return true;
+
+    // Placeholder for Specific IP if needed
+    if (ipStr === '#.#.#.#') return true;
 
     // Check X-Forwarded-For if behind a proxy
     const forwardedFor = req.headers['x-forwarded-for'];
     if (forwardedFor && typeof forwardedFor === 'string') {
         const forwardedIps = forwardedFor.split(',').map(s => s.trim());
         for (const fIp of forwardedIps) {
-            if (fIp.startsWith('192.168.1.')) return true;
+            if (fIp.startsWith('192.168.')) return true;
+            if (fIp.startsWith('10.')) return true;
+            if (fIp.startsWith('100.')) return true;
+            if (fIp.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true;
             if (fIp === '#.#.#.#') return true;
         }
     }
