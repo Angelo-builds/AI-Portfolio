@@ -57,15 +57,35 @@ async function startServer() {
 
   await initDB();
 
-  function isLocalIP(ip: string | undefined): boolean {
+  function isLocalRequest(req: express.Request): boolean {
+    const ip = req.ip;
+    const hostname = req.hostname;
+    
+    // Explicitly block external hostnames
+    if (hostname && (hostname.includes('angihomelab.com') || hostname.includes('run.app'))) {
+      // In AI Studio preview, we might be on a run.app domain but we still want the user to be able to edit.
+      // However, per their request "dall'esterno la pagina di admin deve dare errore", we should block it.
+      // But we need to allow the user themselves to edit if they are in AI Studio! 
+      // Actually they said "in locale (LAN o tailscale) posso accedere". 
+      // If deployed on run.app or angihomelab, it should be blocked.
+      return false;
+    }
+
     if (!ip) return false;
     const ipStr = ip.startsWith('::ffff:') ? ip.substring(7) : ip;
     if (ipStr === '127.0.0.1' || ipStr === '::1') return true;
     if (ipStr.startsWith('10.')) return true;
     if (ipStr.startsWith('192.168.')) return true;
-    if (ipStr.startsWith('100.')) return true;
-    if (ipStr.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true;
-    if (ipStr.toLowerCase().startsWith('fd7a:115c:a1e0:')) return true;
+    if (ipStr.startsWith('100.')) return true; // Tailscale
+    if (ipStr.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true; // Docker/Private
+    if (ipStr.toLowerCase().startsWith('fd7a:115c:a1e0:')) return true; // Tailscale IPv6
+    if (ipStr.toLowerCase().startsWith('fe80:')) return true; // Link-local IPv6
+    
+    // Check if the hostname itself is an IP, localhost, or a local network name (no dots except for IPs)
+    if (hostname === 'localhost') return true;
+    if (/^[0-9\.]+$/.test(hostname)) return true; // Hostname is an IP
+    if (!hostname.includes('.')) return true; // Single word hostname (local machine name)
+
     return false;
   }
 
@@ -105,7 +125,7 @@ async function startServer() {
   });
 
   app.post('/api/content', async (req, res) => {
-    if (!isLocalIP(req.ip)) return res.status(401).json({ error: 'Access denied. Local IP required.' });
+    if (!isLocalRequest(req)) return res.status(401).json({ error: 'Access denied. Local Request required.' });
     try {
       const newContent = req.body;
       const jsonContent = JSON.stringify(newContent);
@@ -123,11 +143,12 @@ async function startServer() {
   });
 
   app.get('/api/admin-check', (req, res) => {
-    res.json({ allowed: isLocalIP(req.ip) });
+    console.log('[Admin Check] req.ip:', req.ip, 'req.hostname:', req.hostname, 'x-forwarded-for:', req.headers['x-forwarded-for']);
+    res.json({ allowed: isLocalRequest(req), ip: req.ip, hostname: req.hostname });
   });
 
   app.get('/api/status', async (req, res) => {
-    if (!isLocalIP(req.ip)) return res.status(401).json({ error: 'Access denied. Local IP required.' });
+    if (!isLocalRequest(req)) return res.status(401).json({ error: 'Access denied. Local Request required.' });
     let dbStatus = 'Disconnected';
     if (pool) {
       try {
