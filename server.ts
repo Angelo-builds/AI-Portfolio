@@ -58,33 +58,27 @@ async function startServer() {
   await initDB();
 
   function isLocalRequest(req: express.Request): boolean {
-    const ip = req.ip;
-    const hostname = req.hostname;
-    
-    // Explicitly block external hostnames
-    if (hostname && (hostname.includes('angihomelab.com') || hostname.includes('run.app'))) {
-      // In AI Studio preview, we might be on a run.app domain but we still want the user to be able to edit.
-      // However, per their request "dall'esterno la pagina di admin deve dare errore", we should block it.
-      // But we need to allow the user themselves to edit if they are in AI Studio! 
-      // Actually they said "in locale (LAN o tailscale) posso accedere". 
-      // If deployed on run.app or angihomelab, it should be blocked.
-      return false;
-    }
-
-    if (!ip) return false;
+    const ip = req.ip || '';
     const ipStr = ip.startsWith('::ffff:') ? ip.substring(7) : ip;
-    if (ipStr === '127.0.0.1' || ipStr === '::1') return true;
-    if (ipStr.startsWith('10.')) return true;
-    if (ipStr.startsWith('192.168.')) return true;
-    if (ipStr.startsWith('100.')) return true; // Tailscale
-    if (ipStr.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./)) return true; // Docker/Private
-    if (ipStr.toLowerCase().startsWith('fd7a:115c:a1e0:')) return true; // Tailscale IPv6
-    if (ipStr.toLowerCase().startsWith('fe80:')) return true; // Link-local IPv6
     
-    // Check if the hostname itself is an IP, localhost, or a local network name (no dots except for IPs)
-    if (hostname === 'localhost') return true;
-    if (/^[0-9\.]+$/.test(hostname)) return true; // Hostname is an IP
-    if (!hostname.includes('.')) return true; // Single word hostname (local machine name)
+    // Explicitly allow 192.168.1.x (LAN)
+    if (ipStr.startsWith('192.168.1.')) return true;
+
+    // Placeholder for Tailscale IP - you will replace this later
+    if (ipStr === '#.#.#.#') return true;
+    
+    // Also allow local loopback
+    if (ipStr === '127.0.0.1' || ipStr === '::1') return true;
+
+    // Check X-Forwarded-For if behind a proxy
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (forwardedFor && typeof forwardedFor === 'string') {
+        const forwardedIps = forwardedFor.split(',').map(s => s.trim());
+        for (const fIp of forwardedIps) {
+            if (fIp.startsWith('192.168.1.')) return true;
+            if (fIp === '#.#.#.#') return true;
+        }
+    }
 
     return false;
   }

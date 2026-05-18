@@ -39,7 +39,8 @@ export const useStore = create<AppState>()(
       setLanguage: (lang) => set({ language: lang }),
       setTheme: (theme) => set({ theme }),
       login: (password) => {
-        if (password === 'admin123') {
+        // Change this password to a secure one that you will remember!
+        if (password === 'SuperSecurePassword!#123') {
           set({ isAdmin: true });
           return true;
         }
