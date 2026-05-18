@@ -12,20 +12,24 @@ export default function AdminLogin() {
   useEffect(() => {
     // Check with the server if we are allowed to access the admin area based on our IP
     fetch('/api/admin-check')
-      .then(res => res.json())
+      .then(async res => {
+        if (!res.ok) {
+           const text = await res.text();
+           throw new Error(`HTTP ${res.status}: ${text.substring(0, 50)}...`);
+        }
+        return res.json();
+      })
       .then(data => {
         console.log('[Admin Check Response]', data);
         if (!data.allowed) {
           console.warn('[Admin Check Failed]', data);
           // navigate('/404', { replace: true });
-          alert(`Access denied. Allowed: ${data.allowed}, IP: ${data.ip}, Hostname: ${data.hostname}`);
           navigate('/404', { replace: true });
         }
       })
       .catch((err) => {
         console.error('[Admin Check Error]', err);
         // Fallback: If the check fails entirely, probably safer to deny
-        alert(`Admin check failed: ${err.message}`);
         navigate('/404', { replace: true });
       });
   }, [navigate]);
