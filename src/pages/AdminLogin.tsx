@@ -14,12 +14,18 @@ export default function AdminLogin() {
     fetch('/api/admin-check')
       .then(res => res.json())
       .then(data => {
+        console.log('[Admin Check Response]', data);
         if (!data.allowed) {
+          console.warn('[Admin Check Failed]', data);
+          // navigate('/404', { replace: true });
+          alert(`Access denied. Allowed: ${data.allowed}, IP: ${data.ip}, Hostname: ${data.hostname}`);
           navigate('/404', { replace: true });
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[Admin Check Error]', err);
         // Fallback: If the check fails entirely, probably safer to deny
+        alert(`Admin check failed: ${err.message}`);
         navigate('/404', { replace: true });
       });
   }, [navigate]);
