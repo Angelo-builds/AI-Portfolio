@@ -13,9 +13,14 @@ export default function AdminLogin() {
     // Check with the server if we are allowed to access the admin area based on our IP
     fetch('/api/admin-check')
       .then(async res => {
+        const contentType = res.headers.get('content-type');
         if (!res.ok) {
            const text = await res.text();
            throw new Error(`HTTP ${res.status}: ${text.substring(0, 50)}...`);
+        }
+        if (contentType && contentType.includes('text/html')) {
+           const text = await res.text();
+           throw new Error(`Received HTML instead of JSON. Are you running the raw Vite server instead of 'tsx server.ts'? (Check package.json dev script)`);
         }
         return res.json();
       })
