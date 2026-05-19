@@ -9,17 +9,21 @@ echo "==> Pulling latest changes from git..."
 git pull origin main
 
 echo "==> Installing dependencies..."
-npm install
+npm ci || npm install
 
 echo "==> Building frontend and backend..."
 npm run build
 
-# To ensure the server runs in production mode, set NODE_ENV=production
-# Assuming you use pm2:
-# pm2 start ecosystem.config.js OR
-# pm2 restart portfolio
-echo "==> Restarting services. You may need to restart the node server manually if not using PM2."
-echo "==> Note: Run the app using 'npm start' with NODE_ENV=production or PM2."
+echo "==> Restarting node server via PM2..."
+# Try to restart pm2 if it exists, otherwise echo instructions
+if command -v pm2 &> /dev/null
+then
+    echo "PM2 found, attempting to restart services..."
+    # Assuming 'portfolio' might be the pm2 name, or we can use 'all' if only one app
+    pm2 restart all || echo "Could not restart PM2 automatically, please do so manually."
+else
+    echo "==> Note: PM2 not found. Run the app using 'npm start' with NODE_ENV=production."
+fi
 
 echo "==> Removing maintenance mode..."
 rm -f .maintenance

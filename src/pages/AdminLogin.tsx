@@ -10,30 +10,59 @@ export default function AdminLogin() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check with the server if we are allowed to access the admin area based on our IP
+    // 1. Initial frontend-based check using window.location.hostname
+    const hostname = window.location.hostname;
+    console.log('[Admin Access] Frontend window.location.hostname is:', hostname);
+    
+    // Quick allow for LAN/Tailscale/Localhost hostnames directly
+    const isLocalFrontend = 
+      hostname === 'localhost' || 
+      hostname === '127.0.0.1' || 
+      hostname.startsWith('192.168.') || 
+      hostname.startsWith('10.') || 
+      hostname.startsWith('100.') ||
+      // In case of localhost tunneling or local domains
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal');
+
+    if (isLocalFrontend) {
+        console.log('[Admin Access] Allowed by frontend hostname check:', hostname);
+        // We can safely allow the user to see the login screen
+        return;
+    }
+    
+    console.log('[Admin Access] Frontend hostname not recognized as local. Falling back to backend /api/admin-check validation...');
+
+    // 2. Fallback to server check (e.g., if behind proxy but IP is passed via headers)
     fetch('/api/admin-check')
       .then(async res => {
         const contentType = res.headers.get('content-type');
+        console.log('[Admin Access] Backend response status:', res.status, 'Content-Type:', contentType);
+        
         if (!res.ok) {
            const text = await res.text();
+           console.error('[Admin Access] Backend returned error status:', res.status, text.substring(0, 100));
            throw new Error(`HTTP ${res.status}: ${text.substring(0, 50)}...`);
         }
+        
         if (contentType && contentType.includes('text/html')) {
            const text = await res.text();
+           console.error('[Admin Access] Backend returned HTML instead of JSON. The Node server might not be running or the request was intercepted by Vite/Nginx.', text.substring(0, 200));
            throw new Error(`Received HTML instead of JSON. Are you running the raw Vite server instead of 'tsx server.ts'? (Check package.json dev script)`);
         }
         return res.json();
       })
       .then(data => {
-        console.log('[Admin Check Response]', data);
+        console.log('[Admin Access] Backend JSON Response:', data);
         if (!data.allowed) {
-          console.warn('[Admin Check Failed]', data);
-          // navigate('/404', { replace: true });
+          console.warn('[Admin Access] Backend rejected access based on IP. Navigating to 404.');
           navigate('/404', { replace: true });
+        } else {
+          console.log('[Admin Access] Backend allowed access.');
         }
       })
       .catch((err) => {
-        console.error('[Admin Check Error]', err);
+        console.error('[Admin Access] Fatal error during backend check:', err);
         // Fallback: If the check fails entirely, probably safer to deny
         navigate('/404', { replace: true });
       });
