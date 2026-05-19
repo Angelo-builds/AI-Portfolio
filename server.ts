@@ -19,6 +19,7 @@ if (process.env.PGHOST) {
     password: process.env.PGPASSWORD,
     database: process.env.PGDATABASE,
     port: Number(process.env.PGPORT) || 5432,
+    connectionTimeoutMillis: 3000, // Important: avoid hanging the startup if db is unreachable
   });
 }
 
@@ -50,7 +51,7 @@ async function initDB() {
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
   
   app.set('trust proxy', true);
   app.use(express.json({ limit: '10mb' }));

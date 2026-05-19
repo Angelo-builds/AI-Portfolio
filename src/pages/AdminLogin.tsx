@@ -23,7 +23,9 @@ export default function AdminLogin() {
       hostname.startsWith('100.') ||
       // In case of localhost tunneling or local domains
       hostname.endsWith('.local') ||
-      hostname.endsWith('.internal');
+      hostname.endsWith('.internal') ||
+      // Allow AI Studio environment for development/testing
+      hostname.includes('run.app');
 
     if (isLocalFrontend) {
         console.log('[Admin Access] Allowed by frontend hostname check:', hostname);
@@ -40,15 +42,12 @@ export default function AdminLogin() {
         console.log('[Admin Access] Backend response status:', res.status, 'Content-Type:', contentType);
         
         if (!res.ok) {
-           const text = await res.text();
-           console.error('[Admin Access] Backend returned error status:', res.status, text.substring(0, 100));
-           throw new Error(`HTTP ${res.status}: ${text.substring(0, 50)}...`);
+           return { allowed: false, error: `HTTP ${res.status}` };
         }
         
         if (contentType && contentType.includes('text/html')) {
-           const text = await res.text();
-           console.error('[Admin Access] Backend returned HTML instead of JSON. The Node server might not be running or the request was intercepted by Vite/Nginx.', text.substring(0, 200));
-           throw new Error(`Received HTML instead of JSON. Are you running the raw Vite server instead of 'tsx server.ts'? (Check package.json dev script)`);
+           console.log('[Admin Access] Backend returned HTML instead of JSON. Assuming access denied (possibly AI Studio proxy or firewall).');
+           return { allowed: false, reason: 'Proxy/Firewall blocked JSON API.' };
         }
         return res.json();
       })
